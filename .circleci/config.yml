@@ -346,6 +346,7 @@ workflows:
   version: 2
   check-datasources:
     jobs:
+      - test-elastic7
       - test-elastic6
       - test-elastic5
       - test-mongo4
