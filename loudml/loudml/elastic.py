@@ -227,6 +227,8 @@ class ElasticsearchDataSource(DataSource):
                 name=template_name,
                 body=template,
                 ignore=400,
+                create=True,
+                params={"include_type_name": "true"},  # ES 7.x
             )
 
     def drop(self, index=None):

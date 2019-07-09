@@ -32,7 +32,6 @@ TEMPLATE = {
 }
 
 MAPPING = {
-    "include_in_all": True,
     "properties": {
         "timestamp": {
             "type": "date"
@@ -126,7 +125,7 @@ class TestElasticDataSource(unittest.TestCase):
                 'name': 'test',
                 'addr': os.environ['ELASTICSEARCH_ADDR'],
                 'index': self.index,
-                'doc_type': 'custom',
+                'doc_type': '_doc',
             }
             self.source = ElasticsearchDataSource(settings)
 
