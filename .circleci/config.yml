@@ -147,6 +147,12 @@ influx_coverage_test: &influx_coverage_test
 
 version: 2
 jobs:
+  test-elastic7:
+    docker:
+      - image: circleci/python:3.6.1
+      - image: elasticsearch:7.2.0
+    <<: *es_unit_test
+
   test-elastic6:
     docker:
       - image: circleci/python:3.6.1
