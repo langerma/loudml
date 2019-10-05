@@ -1,5 +1,11 @@
+"""
+OpenTSDB module for Loud ML
+"""
+from loudml.bucket import Bucket
 import requests
 import pandas
+
+# json imports for tsdb
 
 try:
     # Use ujson if available.
@@ -7,6 +13,105 @@ try:
 except Exception:
     import json
 
+from voluptuous import (
+    Required,
+    Optional,
+    All,
+    Length,
+    Boolean,
+)
+
+from . import (
+    errors,
+    schemas,
+)
+from loudml.misc import (
+    escape_quotes,
+    escape_doublequotes,
+    make_ts,
+    parse_addr,
+    str_to_ts,
+    ts_to_str,
+)
+
+class OpenTSDB(Bucket):
+    """
+    OpenTSDB Bucket
+    """
+
+    SCHEMA = Bucket.SCHEMA.extend({
+        Required('addr'): str,
+    })
+
+    def __init__(self, cfg):
+        cfg['type'] = 'opentsdb'
+        super().__init__(cfg)
+
+    def get_times_data(
+        self,
+        bucket_interval,
+        features,
+        from_date=None,
+        to_date=None,
+    ):
+        nb_features = len(features)
+
+        queries = self._build_times_queries(
+            bucket_interval, features, from_date, to_date)
+        results = self._run_queries(queries)
+
+        if not isinstance(results, list):
+            results = [results]
+
+        buckets = []
+        # Merge results
+        for i, result in enumerate(results):
+            feature = features[i]
+
+            for j, point in enumerate(result.get_points()):
+                agg_val = point.get(feature.name)
+                timeval = point['time']
+
+                if j < len(buckets):
+                    bucket = buckets[j]
+                else:
+                    bucket = {
+                        'time': timeval,
+                        'mod': int(str_to_ts(timeval)) % bucket_interval,
+                        'values': {},
+                    }
+                    buckets.append(bucket)
+
+                bucket['values'][feature.name] = agg_val
+
+        # Build final result
+        t0 = None
+        result = []
+
+        for bucket in buckets:
+            X = np.full(nb_features, np.nan, dtype=float)
+            timeval = bucket['time']
+            ts = str_to_ts(timeval)
+
+            for i, feature in enumerate(features):
+                agg_val = bucket['values'].get(feature.name)
+                if agg_val is None:
+                    logging.info(
+                        "missing data: field '%s', metric '%s', bucket: %s",
+                        feature.field, feature.metric, timeval,
+                    )
+                else:
+                    X[i] = agg_val
+
+            if t0 is None:
+                t0 = ts
+
+            result.append(((ts - t0) / 1000, X, timeval))
+
+        return result
+
+
+###### old code
 class OpenTSDBResponseSerie(object):
     """
         A single OpenTSDB response serie i.e 1 element of the response
